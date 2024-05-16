@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="mp4_to_jpg",
-    version="1.0.0",
+    version="1.0.3",
     author="Tadeas Fort",
     author_email="taddy.fort@gmail.com",
     description="A tool to extract frames from MP4 videos and remove duplicates",
@@ -20,7 +20,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "mp4-to-jpg = mp4_to_jpg.script:main",
+            "mp4-to-jpg = mp4_to_jpg.mp4_to_jpg:main",
         ],
     },
     classifiers=[

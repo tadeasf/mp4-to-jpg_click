@@ -6,6 +6,7 @@ duplicates
 deprecated
 .env
 mp4_to_jpg.spec
+mp4-to-jpg
 __pycache__
 *.pyc
 *.pyo
