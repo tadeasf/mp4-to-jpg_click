@@ -4,7 +4,7 @@ setup(
     name="mp4_to_jpg",
     version="1.0.0",
     author="Tadeas Fort",
-    author_email="business@tadeasfort.com",
+    author_email="taddy.fort@gmail.com",
     description="A tool to extract frames from MP4 videos and remove duplicates",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

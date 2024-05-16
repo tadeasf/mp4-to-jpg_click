@@ -5,6 +5,7 @@ duplicates
 .venv
 deprecated
 .env
+mp4_to_jpg.spec
 __pycache__
 *.pyc
 *.pyo
