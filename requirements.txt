@@ -1,0 +1,7 @@
+imagededup
+opencv-python
+imagehash
+pillow
+loguru
+tqdm
+click

@@ -1,0 +1,7 @@
+.vscode
+duplicates
+.DS_Store
+.pydio
+.venv
+deprecated
+.env
