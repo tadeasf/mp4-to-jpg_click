@@ -6,7 +6,7 @@ import concurrent.futures
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog
-import click
+import rich_click as click
 from tqdm import tqdm
 from loguru import logger
 from imagededup.methods import CNN
@@ -242,20 +242,53 @@ def find_duplicates(output_dir, generated_files, fps, threshold=0.7):
 
 def select_input_files():
     """Open file dialog to select multiple video files."""
-    root = tk.Tk()
-    root.withdraw()
-    input_files = filedialog.askopenfilenames(
-        title="Select Video Files", filetypes=[("Video Files", "*.mp4 *.mov")]
-    )
-    return input_files
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        input_files = filedialog.askopenfilenames(
+            title="Select Video Files", filetypes=[("Video Files", "*.mp4 *.mov")]
+        )
+        return input_files
+    except Exception as e:
+        logger.error(f"Tkinter file dialog failed: {e}")
+        return cli_select_input_files()
 
 
 def select_output_directory():
     """Open file dialog to select output directory."""
-    root = tk.Tk()
-    root.withdraw()
-    output_dir = filedialog.askdirectory(title="Select Output Directory")
-    return output_dir
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        output_dir = filedialog.askdirectory(title="Select Output Directory")
+        return output_dir
+    except Exception as e:
+        logger.error(f"Tkinter file dialog failed: {e}")
+        return cli_select_output_directory()
+
+
+def cli_select_input_files():
+    """Fallback method to select multiple video files via CLI."""
+    input_files = []
+    print("Enter the paths of the video files (type 'done' when finished):")
+    while True:
+        path = input("Path: ").strip()
+        if path.lower() == "done":
+            break
+        if os.path.isfile(path):
+            input_files.append(path)
+        else:
+            print(f"File does not exist: {path}")
+    return input_files
+
+
+def cli_select_output_directory():
+    """Fallback method to select output directory via CLI."""
+    while True:
+        output_dir = input("Enter the output directory path: ").strip()
+        if os.path.isdir(output_dir):
+            return output_dir
+        else:
+            print(f"Directory does not exist: {output_dir}")
 
 
 @click.command()

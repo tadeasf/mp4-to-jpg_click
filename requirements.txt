@@ -4,4 +4,4 @@ imagehash
 pillow
 loguru
 tqdm
-click
+rich-click
