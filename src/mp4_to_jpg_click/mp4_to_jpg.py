@@ -7,10 +7,13 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog
 import rich_click as click
-from tqdm import tqdm
 from loguru import logger
 from imagededup.methods import CNN
 import math
+from prompt_toolkit import prompt
+from prompt_toolkit.completion import PathCompleter
+from prompt_toolkit.shortcuts import ProgressBar
+from prompt_toolkit.formatted_text import HTML
 
 # Setup loguru for logging
 logger.add("file_{time}.log", rotation="1 MB", backtrace=True, diagnose=True)
@@ -59,22 +62,22 @@ def extract_frames(
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         logger.info(f"Total frames in {video_path}: {total_frames}")
         frame_count = 0
-
         generated_files = []
 
-        with tqdm(
-            total=total_frames // (frame_skip + 1),
-            desc=f"Processing {Path(video_path).name}",
-            unit="frame",
-        ) as pbar:
-            while (
-                cap.isOpened()
-                and (max_frames is None or total_generated[0] < max_frames)
-                and (
-                    max_frames_per_video is None
-                    or len(generated_files) < max_frames_per_video
-                )
-            ):
+        total_frames // (frame_skip + 1)
+        title = HTML(f"<b>Processing</b> {Path(video_path).name}")
+
+        with ProgressBar(title=title) as pb:
+            for i in pb(range(total_frames)):
+                if not cap.isOpened():
+                    break
+
+                if (max_frames is not None and total_generated[0] >= max_frames) or (
+                    max_frames_per_video is not None
+                    and len(generated_files) >= max_frames_per_video
+                ):
+                    break
+
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -88,7 +91,6 @@ def extract_frames(
                     total_generated[0] += 1
 
                 frame_count += 1
-                pbar.update(1)
 
         cap.release()
         return generated_files
@@ -267,28 +269,51 @@ def select_output_directory():
 
 
 def cli_select_input_files():
-    """Fallback method to select multiple video files via CLI."""
+    """Fallback method to select multiple video files via CLI using prompt_toolkit."""
     input_files = []
+    file_completer = PathCompleter(
+        only_directories=False,
+        file_filter=lambda x: x.lower().endswith((".mp4", ".mov")),
+    )
+
     print("Enter the paths of the video files (type 'done' when finished):")
     while True:
-        path = input("Path: ").strip()
-        if path.lower() == "done":
+        try:
+            path = prompt(
+                "Path: ", completer=file_completer, complete_while_typing=True
+            ).strip()
+
+            if path.lower() == "done":
+                break
+
+            if os.path.isfile(path):
+                input_files.append(path)
+            else:
+                print(f"File does not exist: {path}")
+        except KeyboardInterrupt:
             break
-        if os.path.isfile(path):
-            input_files.append(path)
-        else:
-            print(f"File does not exist: {path}")
+
     return input_files
 
 
 def cli_select_output_directory():
-    """Fallback method to select output directory via CLI."""
+    """Fallback method to select output directory via CLI using prompt_toolkit."""
+    dir_completer = PathCompleter(only_directories=True)
+
     while True:
-        output_dir = input("Enter the output directory path: ").strip()
-        if os.path.isdir(output_dir):
-            return output_dir
-        else:
-            print(f"Directory does not exist: {output_dir}")
+        try:
+            output_dir = prompt(
+                "Enter the output directory path: ",
+                completer=dir_completer,
+                complete_while_typing=True,
+            ).strip()
+
+            if os.path.isdir(output_dir):
+                return output_dir
+            else:
+                print(f"Directory does not exist: {output_dir}")
+        except KeyboardInterrupt:
+            return None
 
 
 @click.command()
