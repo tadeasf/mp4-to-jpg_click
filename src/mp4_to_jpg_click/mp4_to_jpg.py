@@ -12,8 +12,7 @@ from imagededup.methods import CNN
 import math
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import PathCompleter
-from prompt_toolkit.shortcuts import ProgressBar
-from prompt_toolkit.formatted_text import HTML
+from tqdm import tqdm
 
 # Setup loguru for logging
 logger.add("file_{time}.log", rotation="1 MB", backtrace=True, diagnose=True)
@@ -64,11 +63,10 @@ def extract_frames(
         frame_count = 0
         generated_files = []
 
-        total_frames // (frame_skip + 1)
-        title = HTML(f"<b>Processing</b> {Path(video_path).name}")
-
-        with ProgressBar(title=title) as pb:
-            for i in pb(range(total_frames)):
+        with tqdm(
+            total=total_frames, desc=f"Processing {Path(video_path).name}"
+        ) as pbar:
+            for i in range(total_frames):
                 if not cap.isOpened():
                     break
 
@@ -91,6 +89,7 @@ def extract_frames(
                     total_generated[0] += 1
 
                 frame_count += 1
+                pbar.update(1)
 
         cap.release()
         return generated_files

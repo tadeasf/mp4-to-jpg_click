@@ -1,6 +1,6 @@
 [project]
 name = "mp4-to-jpg-click"
-version = "1.1.10"
+version = "1.2.1"
 description = "A CLI tool to extract frames from MP4/MOV videos with intelligent frame skipping and duplicate detection"
 authors = [{ name = "tadeasf", email = "business@tadeasfort.com" }]
 dependencies = [
