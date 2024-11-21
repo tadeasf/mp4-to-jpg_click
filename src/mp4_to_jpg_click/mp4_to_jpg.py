@@ -4,8 +4,6 @@ import shutil
 import tempfile
 import concurrent.futures
 from pathlib import Path
-import tkinter as tk
-from tkinter import filedialog
 import rich_click as click
 from loguru import logger
 from imagededup.methods import CNN
@@ -15,7 +13,7 @@ from prompt_toolkit.completion import PathCompleter
 from tqdm import tqdm
 
 # Setup loguru for logging
-logger.add("file_{time}.log", rotation="1 MB", backtrace=True, diagnose=True)
+logger.add("./logs/file_{time}.log", rotation="1 MB", backtrace=True, diagnose=True)
 
 
 def calculate_frame_skip(
@@ -241,77 +239,108 @@ def find_duplicates(output_dir, generated_files, fps, threshold=0.7):
         return 0
 
 
-def select_input_files():
-    """Open file dialog to select multiple video files."""
-    try:
-        root = tk.Tk()
-        root.withdraw()
-        input_files = filedialog.askopenfilenames(
-            title="Select Video Files", filetypes=[("Video Files", "*.mp4 *.mov")]
-        )
-        return input_files
-    except Exception as e:
-        logger.error(f"Tkinter file dialog failed: {e}")
-        return cli_select_input_files()
+def is_video_file(path):
+    """Check if path is a video file with allowed extensions."""
+    return path.lower().endswith((".mp4", ".mov")) and not path.startswith(".")
 
 
-def select_output_directory():
-    """Open file dialog to select output directory."""
+def is_visible_dir(path):
+    """Check if path is a visible directory."""
+    return os.path.isdir(path) and not os.path.basename(path).startswith(".")
+
+
+def get_filtered_paths():
+    """Get filtered paths for the current directory."""
+    paths = []
     try:
-        root = tk.Tk()
-        root.withdraw()
-        output_dir = filedialog.askdirectory(title="Select Output Directory")
-        return output_dir
+        for path in os.listdir("."):
+            # Add visible directories
+            if is_visible_dir(path):
+                paths.append(path + os.sep)  # Add separator for directories
+            # Add visible video files
+            elif is_video_file(path):
+                paths.append(path)
     except Exception as e:
-        logger.error(f"Tkinter file dialog failed: {e}")
-        return cli_select_output_directory()
+        logger.error(f"Error listing directory: {e}")
+    return paths
 
 
 def cli_select_input_files():
-    """Fallback method to select multiple video files via CLI using prompt_toolkit."""
+    """Select multiple video files via CLI with path completion."""
     input_files = []
     file_completer = PathCompleter(
-        only_directories=False,
-        file_filter=lambda x: x.lower().endswith((".mp4", ".mov")),
+        only_directories=False, expanduser=True, min_input_len=0
     )
 
-    print("Enter the paths of the video files (type 'done' when finished):")
+    print("\nEnter the paths of the video files (type 'done' when finished)")
+    print("Tips: - Use Tab for completion")
+    print("      - Type '..' for parent directory")
+    print("      - Only .mp4/.mov files will be processed\n")
+
     while True:
         try:
             path = prompt(
-                "Path: ", completer=file_completer, complete_while_typing=True
+                "Video path: ",
+                completer=file_completer,
+                complete_while_typing=True,
+                complete_in_thread=True,
             ).strip()
 
             if path.lower() == "done":
                 break
 
-            if os.path.isfile(path):
-                input_files.append(path)
+            if os.path.isfile(path) and is_video_file(path):
+                input_files.append(os.path.abspath(path))
+                print(f"Added: {path}")
             else:
-                print(f"File does not exist: {path}")
+                print(f"Not a valid video file: {path}")
         except KeyboardInterrupt:
+            print("\nInput selection cancelled.")
             break
 
     return input_files
 
 
 def cli_select_output_directory():
-    """Fallback method to select output directory via CLI using prompt_toolkit."""
-    dir_completer = PathCompleter(only_directories=True)
+    """Select output directory via CLI with path completion."""
+    dir_completer = PathCompleter(
+        only_directories=True, expanduser=True, min_input_len=0
+    )
+
+    print("\nSelect the output directory for the extracted frames")
+    print("Tips: - Use Tab for completion")
+    print("      - Type '..' for parent directory\n")
 
     while True:
         try:
             output_dir = prompt(
-                "Enter the output directory path: ",
+                "Output directory: ",
                 completer=dir_completer,
                 complete_while_typing=True,
+                complete_in_thread=True,
             ).strip()
 
             if os.path.isdir(output_dir):
-                return output_dir
+                return os.path.abspath(output_dir)
             else:
-                print(f"Directory does not exist: {output_dir}")
+                create = (
+                    prompt(
+                        f"Directory '{output_dir}' doesn't exist. Create it? [y/N]: "
+                    )
+                    .lower()
+                    .strip()
+                )
+
+                if create == "y":
+                    try:
+                        os.makedirs(output_dir, exist_ok=True)
+                        return os.path.abspath(output_dir)
+                    except Exception as e:
+                        print(f"Error creating directory: {e}")
+                else:
+                    print("Please select a valid directory.")
         except KeyboardInterrupt:
+            print("\nDirectory selection cancelled.")
             return None
 
 
@@ -352,8 +381,8 @@ def main(
     """Main function to execute the script."""
     logger.info("Starting video frame extraction tool.")
 
-    input_files = select_input_files()
-    output_dir = select_output_directory()
+    input_files = cli_select_input_files()
+    output_dir = cli_select_output_directory()
 
     if not input_files:
         logger.error("No input files selected. Exiting.")
